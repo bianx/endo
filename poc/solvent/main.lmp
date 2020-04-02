@@ -5,18 +5,13 @@ awk '
 BEGIN {
   n = 30
   T = 300
-  natoms = 10
   ntypes = 1
   L = 128
-  eps = L/1000
-
   dx = L / n
   xlo = ylo = zlo = -L/2
   xhi = yhi = zhi = L/2
-  
   zlo = -1
   zhi = 1
-
   for (l = i = 0; i < n; i++)
       for (j = 0; j < n; j++) {
 	  x[l] = -L/2 + (i + 1/2) * dx
@@ -25,7 +20,6 @@ BEGIN {
 	  type[l] = 1
 	  l++
       }
-
   natoms = l
   printf "\n"
   printf "%d atoms\n", natoms
