@@ -1,0 +1,102 @@
+#!/bin/sh
+
+trap 'rm -f /tmp/t.$$; exit 2' 1 2 15
+awk '
+BEGIN {
+  n = 30
+  natom_types = 2
+  nbond_types = 1
+  nbonds = 10
+  L = 128
+  dx = L / n
+  xlo = ylo = zlo = -L/2
+  xhi = yhi = zhi = L/2
+  zlo = -1
+  zhi = 1
+  for (l = i = 0; i < n; i++)
+      for (j = 0; j < n; j++) {
+	  x[l] = -L/2 + (i + 1/2) * dx
+	  y[l] = -L/2 + (j + 1/2) * dx
+	  z[l] = 0
+	  type[l] = 1
+	  mol[l] = 1
+	  T[l] = 300
+	  l++
+      }
+  for (i = 0; i < nbonds + 1; i++) {
+    x[l] = i * dx/2
+    y[l] = 0
+    z[l] = 0
+    type[l] = 2
+    l++
+  }
+  natoms = l
+  printf "LAMMPS\n"
+  printf "%d atoms\n", natoms
+  printf "%d bonds\n", nbonds
+  printf "%d atom types\n", natom_types
+  printf "%d bond types\n", nbond_types
+  printf "%.16e %.16e xlo xhi\n", xlo, xhi
+  printf "%.16e %.16e ylo yhi\n", ylo, yhi
+  printf "%.16e %.16e zlo zhi\n", zlo, zhi
+  printf "Atoms\n"
+  printf "\n"
+  for (l = 0; l < natoms; l++)
+      printf "%d %d %.16e %.16e %.16e %d %.16e\n", l + 1, type[l], x[l], y[l], z[l], mol[l], T[l]
+  printf "Bonds\n"
+  printf "\n"
+  for (i = 0; i < nbonds; i++)
+      printf "%d %d %d %d\n", i + 1, 1, natoms - i, natoms - i - 1
+
+}' > /tmp/t.$$
+lmp_serial -screen /dev/stderr < /tmp/t.$$ <<! |
+boundary        p p p
+
+dimension       2
+units           metal
+atom_style      hybrid bond dpd
+
+read_data       /tmp/t.$$
+
+comm_modify     mode single vel yes
+mass            1 125.9
+mass            2 125.9
+
+pair_style      dpd 300 8.6 245455
+pair_coeff      1 1 0.075 0.022
+pair_coeff      1 2 0.075 0.022
+pair_coeff      2 2 0.075 0.022
+
+bond_style      harmonic
+bond_coeff      1 0.1 4.3
+
+neighbor        2.0 bin
+neigh_modify    every 1 delay 0 check no once no
+
+timestep        0.1
+
+fix             2 all nve
+
+variable        totEnergy equal pe+ke
+
+thermo          100
+thermo_style    custom step temp press pe ke v_totEnergy
+thermo_modify   format float %24.16e
+
+dump            dump all custom 100 /dev/stdout x y type
+run             1000
+!
+awk '
+/^ITEM: TIMESTEP/ {
+    if (f)
+	printf "\n"
+    f = 0
+}
+f {
+    sub(/[ ]*$/, "")
+    print
+}
+/^ITEM: ATOMS/ {
+    f = 1
+} '
+rm -f /tmp/t.$$
