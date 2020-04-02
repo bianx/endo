@@ -5,24 +5,19 @@ awk '
 BEGIN {
   n = 30
   T = 300
-  natoms = 10
-  ntypes = 1
   L = 128
-  eps = L/1000
-
+  ntypes = 2
   dx = L / n
   xlo = ylo = zlo = -L/2
   xhi = yhi = zhi = L/2
-  
   zlo = -1
   zhi = 1
-
   for (l = i = 0; i < n; i++)
       for (j = 0; j < n; j++) {
 	  x[l] = -L/2 + (i + 1/2) * dx
 	  y[l] = -L/2 + (j + 1/2) * dx
 	  z[l] = 0
-	  type[l] = 1
+	  type[l] = y[l] < 0 ? 1 : 2
 	  l++
       }
 
@@ -49,9 +44,12 @@ read_data       /tmp/t.$$
 
 comm_modify     mode single vel yes
 mass            1 125.9
+mass            2 125.9
 
 pair_style      dpd 300 8.6 245455
 pair_coeff      1 1 0.075 0.022
+pair_coeff      1 2 0.075 0.022
+pair_coeff      2 2 0.075 0.022
 
 neighbor        2.0 bin
 neigh_modify    every 1 delay 0 check no once no
