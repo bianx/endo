@@ -4,14 +4,15 @@ trap 'rm -f /tmp/t.$$; exit 2' 1 2 15
 awk '
 BEGIN {
   pi = 3.141592653589793
-  chain0 = "223333333344"
-  nchain = 40
-  R = 9.5
+  chain0 = "22233333444"
   nbeads = split(chain0, chain, "")
-  nx = 30
+  nchain = 120
+  a = 7.2
+  b = 7.2
+  Lx = 40
+  nx = 60
   natom_types = 4
   nbond_types = 1
-  Lx = 200
   dx = Lx / nx
   xlo = ylo = zlo = -Lx/2
   xhi = yhi = zhi = Lx/2
@@ -20,18 +21,11 @@ BEGIN {
   m = 0
   l = 0
   for (i = 0; i < nx; i++)
-      for (j = 0; j < nx; j++) {
-	  x[l] = -L/2 + (i + 1/2) * dx
-	  y[l] = -L/2 + (j + 1/2) * dx
-	  z[l] = 0
-	  type[l] = 1
-	  mol[l] = 1
-	  T[l] = 300
-	  l++
-      }
+      for (j = 0; j < nx; j++)
+	  add_atom(-L/2 + (i + 1/2) * dx, -L/2 + (j + 1/2) * dx, 1)
   for (i = 0; i < nchain; i++) {
       p = 2*pi*i/nchain
-      add_chain(R * cos(p), R * sin(p), p)
+      add_chain(a * cos(p), b * sin(p), p)
   }
   nbonds = m
   natoms = l
@@ -53,18 +47,28 @@ BEGIN {
       printf "%d %d %d %d\n", i + 1, 1, bnd0[i] + 1, bnd1[i] + 1
 }
 
-function add_chain(u, v, phi,   i) {
-  for (i = 0; i < nbeads; i++) {
-    x[l] = u + i * 1.2* dx * cos(phi)
-    y[l] = v + i * 1.2* dx * sin(phi)
+function add_atom(u, v, ty) {
+    x[l] = u
+    y[l] = v
     z[l] = 0
-    type[l] = chain[i + 1]
-    if (i > 0) {
-	bnd0[m] = l - 1
-	bnd1[m] = l
-	m++
-    }
+    type[l] = ty
+    mol[l] = 1
+    T[l] = 300
     l++
+}
+
+function add_chain(u, v, phi,   i, du, dv) {
+    du = 0.9 * dx * cos(phi)
+    dv = 0.9 * dx * sin(phi)
+    for (i = 0; i < 3; i++)
+	add_atom(u - (i + 1) * du, v - (i + 1) * dv, 1)
+    for (i = 0; i < nbeads; i++) {
+	if (i > 0) {
+	    bnd0[m] = l - 1
+	    bnd1[m] = l
+	    m++
+	}
+	add_atom(u + i * du, v + i * dv, chain[i + 1])
   }
 }
 
@@ -79,36 +83,36 @@ atom_style      hybrid bond dpd
 read_data       /tmp/t.$$
 
 comm_modify     mode single vel yes
-mass            1 125.9
-mass            2 125.9
-mass            2 125.9
-mass            3 125.9
-mass            4 125.9
+mass            1 1
+mass            2 1
+mass            2 1
+mass            3 1
+mass            4 1
 
-pair_style      dpd 300 8.6 245455
-pair_coeff      1 1 0.070 1.42
-pair_coeff      1 2 0.075 1.42
-pair_coeff      1 3 0.075 1.42
-pair_coeff      1 4 0.075 1.42
-pair_coeff      2 2 0.075 1.42
-pair_coeff      2 3 0.240 1.42
-pair_coeff      2 4 0.075 1.42
-pair_coeff      3 3 0.075 1.42
-pair_coeff      3 4 0.240 1.42
-pair_coeff      4 4 0.075 1.42
+pair_style      dpd 1e4 1 245455
+pair_coeff      1 1 25 10
+pair_coeff      1 2 20 10
+pair_coeff      1 3 100 10
+pair_coeff      1 4 20 10
+pair_coeff      2 2 25 10
+pair_coeff      2 3 80 10
+pair_coeff      2 4 50 10
+pair_coeff      3 3 25 10
+pair_coeff      3 4 80 10
+pair_coeff      4 4 25 10
 
 bond_style      harmonic
-bond_coeff      1 0.1 3.0
+bond_coeff      1 100 0.5
 
-neighbor        2.0 bin
+neighbor        1 bin
 neigh_modify    every 1 delay 0 check no once no
 
-timestep        0.005
+timestep        1e-5
 
 fix             2 all nve
 
 dump            dump all custom 100 /dev/stdout x y type
-run             10000
+run             1000000
 !
 awk '
 /^ITEM: TIMESTEP/ {
