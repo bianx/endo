@@ -1,4 +1,4 @@
-lmp_serial <<!
+lmp_serial <<'!'
 
 log             log.dpd-vv
 boundary        p p p
