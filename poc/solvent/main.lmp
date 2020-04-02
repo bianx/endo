@@ -54,12 +54,6 @@ timestep        0.1
 
 fix             2 all nve
 
-variable        totEnergy equal pe+ke
-
-thermo          100
-thermo_style    custom step temp press pe ke v_totEnergy
-thermo_modify   format float %24.16e
-
 dump            dump all custom 100 /dev/stdout x y type
 run             1000
 !
